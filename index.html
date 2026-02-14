@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>แผนที่โรงพยาบาลร้อยเอ็ด | Roiet Hospital Map</title>
-    <meta name="description" content="แผนที่นำทางภายในโรงพยาบาลร้อยเอ็ด เลือกตึกที่ต้องการแล้วกดนำทางด้วย Google Maps">
+    <meta name="description" content="แผนที่นำทางภายในโรงพยาบาลร้อยเอ็ด ค้นหาแผนก นำทางเดินระหว่างอาคาร พร้อม GPS ติดตามตำแหน่งจริง ใช้งานง่าย ไม่ต้องติดตั้งแอพ">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -334,6 +334,39 @@
         @keyframes gps-blink { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
         .gps-status { font-size: 12px; color: #4285F4; margin-top: 4px; display: none; }
         .gps-status.active { display: block; }
+        /* === Hero Banner === */
+        .hero-banner { background: linear-gradient(135deg, var(--primary) 0%, #0088FF 100%); color: var(--white); padding: 20px 16px; text-align: center; }
+        .hero-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .hero-subtitle { font-size: 13px; opacity: 0.9; }
+        .hero-features { display: flex; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+        .hero-feature { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 20px; font-size: 12px; }
+        /* === Usage Guide === */
+        .guide-panel { background: var(--white); margin: 8px 16px; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .guide-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; cursor: pointer; font-weight: 600; font-size: 15px; color: var(--primary); }
+        .guide-header-icon { font-size: 18px; }
+        .guide-header-title { flex: 1; }
+        .guide-toggle { transition: transform 0.3s; font-size: 12px; color: var(--text-light); }
+        .guide-toggle.open { transform: rotate(180deg); }
+        .guide-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .guide-body.open { max-height: 800px; }
+        .guide-content { padding: 0 16px 16px; }
+        .guide-step { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+        .guide-step:last-child { border-bottom: none; }
+        .guide-step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: var(--white); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+        .guide-step-text { flex: 1; font-size: 14px; line-height: 1.6; }
+        .guide-step-text strong { color: var(--primary); }
+        .guide-tip { background: #FFF3E0; border-left: 3px solid #FF9800; padding: 10px 12px; border-radius: 0 8px 8px 0; margin-top: 12px; font-size: 13px; line-height: 1.5; color: #E65100; }
+        /* === GPS Permission Dialog === */
+        .gps-dialog { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 1500; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .gps-dialog.active { display: flex; }
+        .gps-dialog-box { background: var(--white); border-radius: var(--radius); padding: 24px; max-width: 340px; width: 100%; text-align: center; }
+        .gps-dialog-icon { font-size: 48px; margin-bottom: 12px; }
+        .gps-dialog-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+        .gps-dialog-desc { font-size: 14px; color: var(--text-light); line-height: 1.6; margin-bottom: 16px; }
+        .gps-dialog-steps { text-align: left; background: var(--secondary); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; line-height: 2; }
+        .gps-dialog-btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 8px; }
+        .gps-dialog-btn-go { background: #4285F4; color: white; }
+        .gps-dialog-btn-cancel { background: #f5f5f5; color: var(--text-light); }
         @media (min-width: 768px) {
             .header { padding: 16px 24px; }
             .logo { height: 55px; }
@@ -375,6 +408,16 @@
         <button class="lang-toggle" onclick="toggleLanguage()">EN</button>
     </header>
     
+    <div class="hero-banner">
+        <div class="hero-title" data-th="แผนที่นำทางภายในโรงพยาบาล" data-en="Hospital Indoor Navigation">แผนที่นำทางภายในโรงพยาบาล</div>
+        <div class="hero-subtitle" data-th="ค้นหาตึก แผนก และนำทางเดินไปถึงจุดหมายได้ง่ายๆ" data-en="Find buildings, departments, and get walking directions easily">ค้นหาตึก แผนก และนำทางเดินไปถึงจุดหมายได้ง่ายๆ</div>
+        <div class="hero-features">
+            <div class="hero-feature">🗺️ <span data-th="นำทางเดิน" data-en="Walking Nav">นำทางเดิน</span></div>
+            <div class="hero-feature">📍 <span data-th="GPS ตำแหน่งจริง" data-en="Live GPS">GPS ตำแหน่งจริง</span></div>
+            <div class="hero-feature">🔍 <span data-th="ค้นหาแผนก" data-en="Search Dept">ค้นหาแผนก</span></div>
+        </div>
+    </div>
+
     <div class="search-container">
         <div class="search-wrapper">
             <span class="search-icon">🔍</span>
@@ -415,6 +458,35 @@
                 <button class="nav-btn nav-btn-clear" onclick="clearNavigation()" style="display:none;" id="navClearBtn">
                     <span data-th="✕ ล้าง" data-en="✕ Clear">✕ ล้าง</span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="guide-panel" id="guidePanel">
+        <div class="guide-header" onclick="toggleGuide()">
+            <span class="guide-header-icon">📖</span>
+            <span class="guide-header-title" data-th="วิธีใช้งาน" data-en="How to Use">วิธีใช้งาน</span>
+            <span class="guide-toggle" id="guideToggle">▼</span>
+        </div>
+        <div class="guide-body" id="guideBody">
+            <div class="guide-content">
+                <div class="guide-step">
+                    <div class="guide-step-num">1</div>
+                    <div class="guide-step-text" data-th="<strong>ค้นหาแผนก</strong> — พิมพ์ชื่อแผนกหรือหน่วยงานในช่องค้นหาด้านบน ระบบจะบอกว่าอยู่ตึกไหน ชั้นอะไร" data-en="<strong>Search Department</strong> — Type department name in the search box above. System shows building and floor."><strong>ค้นหาแผนก</strong> — พิมพ์ชื่อแผนกหรือหน่วยงานในช่องค้นหาด้านบน ระบบจะบอกว่าอยู่ตึกไหน ชั้นอะไร</div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-step-num">2</div>
+                    <div class="guide-step-text" data-th="<strong>เปิด GPS</strong> — กดแถบ &quot;นำทางภายในโรงพยาบาล&quot; แล้วกดปุ่ม 📍 ข้างคำว่าจุดเริ่มต้น เบราว์เซอร์จะถามขออนุญาต — <strong>กด &quot;อนุญาต&quot; (Allow)</strong> เพื่อให้ระบบหาตำแหน่งของคุณ" data-en="<strong>Enable GPS</strong> — Tap the &quot;Campus Navigation&quot; bar, then tap 📍 button. Browser will ask permission — <strong>tap &quot;Allow&quot;</strong> to let it find your location."><strong>เปิด GPS</strong> — กดแถบ &quot;นำทางภายในโรงพยาบาล&quot; แล้วกดปุ่ม 📍 ข้างคำว่าจุดเริ่มต้น เบราว์เซอร์จะถามขออนุญาต — <strong>กด &quot;อนุญาต&quot; (Allow)</strong> เพื่อให้ระบบหาตำแหน่งของคุณ</div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-step-num">3</div>
+                    <div class="guide-step-text" data-th="<strong>เลือกปลายทาง</strong> — เลือกตึกที่ต้องการไป หรือค้นหาแผนกแล้วกดนำทาง ระบบจะเลือกปลายทางให้อัตโนมัติ" data-en="<strong>Select Destination</strong> — Pick the building you want to go to, or search a department and tap navigate."><strong>เลือกปลายทาง</strong> — เลือกตึกที่ต้องการไป หรือค้นหาแผนกแล้วกดนำทาง ระบบจะเลือกปลายทางให้อัตโนมัติ</div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-step-num">4</div>
+                    <div class="guide-step-text" data-th="<strong>กด &quot;แสดงเส้นทาง&quot;</strong> — เส้นทางเดินจะปรากฏบนแผนที่ พร้อมระยะทางและเวลา จุดสีน้ำเงินคือตำแหน่งของคุณ เดินไปไหนจุดก็ขยับตาม!" data-en="<strong>Tap &quot;Show Route&quot;</strong> — Walking path appears on the map with distance and time. Blue dot shows your live position!"><strong>กด &quot;แสดงเส้นทาง&quot;</strong> — เส้นทางเดินจะปรากฏบนแผนที่ พร้อมระยะทางและเวลา จุดสีน้ำเงินคือตำแหน่งของคุณ เดินไปไหนจุดก็ขยับตาม!</div>
+                </div>
+                <div class="guide-tip" data-th="💡 <strong>เคล็ดลับ:</strong> กดหมายเลขตึกบนแผนที่เพื่อดูรายละเอียดแต่ละชั้น หรือกดตัวเลขบนแผนที่เพื่อดูข้อมูลตึกนั้นๆ" data-en="💡 <strong>Tip:</strong> Tap building numbers on the map to see floor details.">💡 <strong>เคล็ดลับ:</strong> กดหมายเลขตึกบนแผนที่เพื่อดูรายละเอียดแต่ละชั้น หรือกดตัวเลขบนแผนที่เพื่อดูข้อมูลตึกนั้นๆ</div>
             </div>
         </div>
     </div>
@@ -583,6 +655,17 @@
         </div>
     </div>
     
+    <div class="gps-dialog" id="gpsDialog">
+        <div class="gps-dialog-box">
+            <div class="gps-dialog-icon">📍</div>
+            <div class="gps-dialog-title" data-th="เปิดตำแหน่ง GPS" data-en="Enable GPS Location">เปิดตำแหน่ง GPS</div>
+            <div class="gps-dialog-desc" data-th="ระบบจะแสดงตำแหน่งของคุณบนแผนที่ เพื่อนำทางเดินไปยังตึกที่ต้องการ" data-en="System will show your position on the map to guide you to your destination">ระบบจะแสดงตำแหน่งของคุณบนแผนที่ เพื่อนำทางเดินไปยังตึกที่ต้องการ</div>
+            <div class="gps-dialog-steps" data-th="เมื่อเบราว์เซอร์ถามขออนุญาต:<br>✅ <strong>กด &quot;อนุญาต&quot; (Allow)</strong><br>📱 ต้องเปิด GPS/Location บนมือถือด้วย" data-en="When browser asks permission:<br>✅ <strong>Tap &quot;Allow&quot;</strong><br>📱 GPS/Location must be enabled on your phone">เมื่อเบราว์เซอร์ถามขออนุญาต:<br>✅ <strong>กด &quot;อนุญาต&quot; (Allow)</strong><br>📱 ต้องเปิด GPS/Location บนมือถือด้วย</div>
+            <button class="gps-dialog-btn gps-dialog-btn-go" onclick="confirmGPS()"><span data-th="เปิด GPS เลย" data-en="Enable GPS Now">เปิด GPS เลย</span></button>
+            <button class="gps-dialog-btn gps-dialog-btn-cancel" onclick="closeGPSDialog()"><span data-th="ไม่ใช้ GPS (เลือกตึกเอง)" data-en="Skip (select manually)">ไม่ใช้ GPS (เลือกตึกเอง)</span></button>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
     
     <footer class="footer">
@@ -728,6 +811,13 @@ const departments = [{"name": "จุดลงทะเบียนชั้น-
                 showToast(currentLang === 'th' ? 'เบราว์เซอร์ไม่รองรับ GPS' : 'GPS not supported');
                 return;
             }
+            document.getElementById('gpsDialog').classList.add('active');
+        }
+        function closeGPSDialog() {
+            document.getElementById('gpsDialog').classList.remove('active');
+        }
+        function confirmGPS() {
+            closeGPSDialog();
             showToast(currentLang === 'th' ? 'กำลังหาตำแหน่ง...' : 'Finding location...');
             document.getElementById('gpsBtn').classList.add('active');
             document.getElementById('gpsStatus').classList.add('active');
@@ -735,13 +825,18 @@ const departments = [{"name": "จุดลงทะเบียนชั้น-
             gpsWatchId = navigator.geolocation.watchPosition(
                 pos => updateMyLocation(pos.coords.latitude, pos.coords.longitude),
                 err => {
-                    showToast(currentLang === 'th' ? 'ไม่สามารถระบุตำแหน่งได้ กรุณาเปิด GPS' : 'Cannot get location');
+                    showToast(currentLang === 'th' ? 'ไม่สามารถระบุตำแหน่งได้ กรุณาเปิด GPS และกด "อนุญาต"' : 'Cannot get location. Enable GPS and tap "Allow"');
                     gpsWatchId = null;
                     document.getElementById('gpsBtn').classList.remove('active');
                     document.getElementById('gpsStatus').classList.remove('active');
                 },
                 { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
             );
+        }
+
+        function toggleGuide() {
+            document.getElementById('guideBody').classList.toggle('open');
+            document.getElementById('guideToggle').classList.toggle('open');
         }
 
         function updateMyLocation(lat, lng) {
@@ -912,7 +1007,8 @@ const departments = [{"name": "จุดลงทะเบียนชั้น-
                 } else if (el.tagName === 'OPTION') {
                     el.textContent = el.getAttribute(`data-${currentLang}`);
                 } else {
-                    el.textContent = el.getAttribute(`data-${currentLang}`);
+                    const val = el.getAttribute(`data-${currentLang}`);
+                    if (val && (val.includes('<') || val.includes('&'))) { el.innerHTML = val; } else { el.textContent = val; }
                 }
             });
             if (currentRoute) generateDirections(currentRoute.path);
