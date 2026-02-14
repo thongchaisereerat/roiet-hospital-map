@@ -327,6 +327,13 @@
         .route-step:last-child { border-bottom: none; }
         .route-step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); color: var(--white); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
         .route-step-text { flex: 1; }
+        /* === GPS Location === */
+        .nav-gps-btn { background: #4285F4; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 14px; cursor: pointer; margin-left: auto; transition: background 0.2s; flex-shrink: 0; }
+        .nav-gps-btn:hover { background: #3367D6; }
+        .nav-gps-btn.active { background: #E53935; animation: gps-blink 1.5s infinite; }
+        @keyframes gps-blink { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
+        .gps-status { font-size: 12px; color: #4285F4; margin-top: 4px; display: none; }
+        .gps-status.active { display: block; }
         @media (min-width: 768px) {
             .header { padding: 16px 24px; }
             .logo { height: 55px; }
@@ -388,7 +395,8 @@
         </div>
         <div class="nav-panel-body" id="navPanelBody">
             <div class="nav-select-row">
-                <div class="nav-select-label"><span class="nav-dot nav-dot-start"></span><span data-th="จุดเริ่มต้น (คุณอยู่ตึกไหน?)" data-en="From (Where are you?)">จุดเริ่มต้น (คุณอยู่ตึกไหน?)</span></div>
+                <div class="nav-select-label"><span class="nav-dot nav-dot-start"></span><span data-th="จุดเริ่มต้น (คุณอยู่ตึกไหน?)" data-en="From (Where are you?)">จุดเริ่มต้น (คุณอยู่ตึกไหน?)</span><button class="nav-gps-btn" id="gpsBtn" onclick="toggleGPS()" data-th-title="หาตำแหน่ง GPS" data-en-title="Find GPS location" title="หาตำแหน่ง GPS">📍</button></div>
+                <div class="gps-status" id="gpsStatus" data-th="กำลังติดตามตำแหน่ง GPS..." data-en="Tracking GPS location...">กำลังติดตามตำแหน่ง GPS...</div>
                 <select class="nav-select" id="navFrom" onchange="onNavSelectChange()">
                     <option value="" data-th="-- เลือกตึกต้นทาง --" data-en="-- Select start --">-- เลือกตึกต้นทาง --</option>
                 </select>
@@ -438,6 +446,8 @@
                     <polyline id="routePath" class="route-path" fill="none" stroke="#0066CC" stroke-width="0.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1.5,0.8" marker-end="url(#arrowhead)" points=""/>
                     <circle id="routeStart" r="1.2" fill="#00A651" stroke="white" stroke-width="0.4" cx="0" cy="0" style="display:none;"/>
                     <circle id="routeEnd" r="1.2" fill="#E53935" stroke="white" stroke-width="0.4" cx="0" cy="0" style="display:none;"/>
+                    <circle id="gpsPulse" r="2.5" fill="rgba(66,133,244,0.2)" cx="0" cy="0" style="display:none;"><animate attributeName="r" values="1.5;3.5;1.5" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0.2;0.6" dur="2s" repeatCount="indefinite"/></circle>
+                    <circle id="gpsMarker" r="1" fill="#4285F4" stroke="white" stroke-width="0.4" cx="0" cy="0" style="display:none;"/>
                 </svg>
                 <div class="marker" style="left: 32%; top: 58%;" onclick="showBuilding(1)" data-id="1">
                     1
@@ -677,6 +687,101 @@ const departments = [{"name": "จุดลงทะเบียนชั้น-
             const path = []; let cur = e;
             while (cur !== null) { path.unshift(cur); cur = prev[cur]; }
             return { path, distance: Math.round(dist[e]), time: calcWalkingTime(dist[e]) };
+        }
+
+        // === GPS-to-Map Coordinate Transformation (least squares affine fit) ===
+        const gpsToMapCoeffs = (() => {
+            let a00=0,a01=0,a02=0,a11=0,a12=0;
+            let bx0=0,bx1=0,bx2=0,by0=0,by1=0,by2=0;
+            const n = buildings.length;
+            buildings.forEach(b => {
+                const nd = campusGraph.nodes[b.id];
+                a00+=b.lat*b.lat; a01+=b.lat*b.lng; a02+=b.lat;
+                a11+=b.lng*b.lng; a12+=b.lng;
+                bx0+=b.lat*nd.x; bx1+=b.lng*nd.x; bx2+=nd.x;
+                by0+=b.lat*nd.y; by1+=b.lng*nd.y; by2+=nd.y;
+            });
+            function s3(r){
+                const A=[[a00,a01,a02,r[0]],[a01,a11,a12,r[1]],[a02,a12,n,r[2]]];
+                for(let i=0;i<3;i++){let m=i;for(let j=i+1;j<3;j++)if(Math.abs(A[j][i])>Math.abs(A[m][i]))m=j;
+                [A[i],A[m]]=[A[m],A[i]];for(let j=i+1;j<3;j++){const f=A[j][i]/A[i][i];for(let k=i;k<4;k++)A[j][k]-=f*A[i][k];}}
+                const x=[0,0,0];for(let i=2;i>=0;i--){x[i]=A[i][3];for(let j=i+1;j<3;j++)x[i]-=A[i][j]*x[j];x[i]/=A[i][i];}return x;
+            }
+            return {x:s3([bx0,bx1,bx2]),y:s3([by0,by1,by2])};
+        })();
+        function gpsToMap(lat,lng){
+            return {x:gpsToMapCoeffs.x[0]*lat+gpsToMapCoeffs.x[1]*lng+gpsToMapCoeffs.x[2], y:gpsToMapCoeffs.y[0]*lat+gpsToMapCoeffs.y[1]*lng+gpsToMapCoeffs.y[2]};
+        }
+
+        let gpsWatchId = null;
+        function toggleGPS() {
+            if (gpsWatchId !== null) {
+                navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null;
+                document.getElementById('gpsMarker').style.display = 'none';
+                document.getElementById('gpsPulse').style.display = 'none';
+                document.getElementById('gpsBtn').classList.remove('active');
+                document.getElementById('gpsStatus').classList.remove('active');
+                showToast(currentLang === 'th' ? 'ปิด GPS แล้ว' : 'GPS turned off');
+                return;
+            }
+            if (!navigator.geolocation) {
+                showToast(currentLang === 'th' ? 'เบราว์เซอร์ไม่รองรับ GPS' : 'GPS not supported');
+                return;
+            }
+            showToast(currentLang === 'th' ? 'กำลังหาตำแหน่ง...' : 'Finding location...');
+            document.getElementById('gpsBtn').classList.add('active');
+            document.getElementById('gpsStatus').classList.add('active');
+            openNavPanel();
+            gpsWatchId = navigator.geolocation.watchPosition(
+                pos => updateMyLocation(pos.coords.latitude, pos.coords.longitude),
+                err => {
+                    showToast(currentLang === 'th' ? 'ไม่สามารถระบุตำแหน่งได้ กรุณาเปิด GPS' : 'Cannot get location');
+                    gpsWatchId = null;
+                    document.getElementById('gpsBtn').classList.remove('active');
+                    document.getElementById('gpsStatus').classList.remove('active');
+                },
+                { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+            );
+        }
+
+        function updateMyLocation(lat, lng) {
+            const pos = gpsToMap(lat, lng);
+            if (pos.x < -15 || pos.x > 115 || pos.y < -15 || pos.y > 115) {
+                showToast(currentLang === 'th' ? 'คุณอยู่นอกบริเวณโรงพยาบาล' : 'You are outside the hospital');
+                return;
+            }
+            const cx = Math.max(0, Math.min(100, pos.x)), cy = Math.max(0, Math.min(100, pos.y));
+            const mk = document.getElementById('gpsMarker'), pl = document.getElementById('gpsPulse');
+            mk.setAttribute('cx', cx); mk.setAttribute('cy', cy); mk.style.display = '';
+            pl.setAttribute('cx', cx); pl.setAttribute('cy', cy); pl.style.display = '';
+
+            // Find nearest building by GPS distance (meters)
+            let nearest = null, minDist = Infinity;
+            buildings.forEach(b => {
+                const d = Math.sqrt(Math.pow((b.lat-lat)*111320, 2) + Math.pow((b.lng-lng)*111320*Math.cos(lat*Math.PI/180), 2));
+                if (d < minDist) { minDist = d; nearest = b; }
+            });
+
+            // Auto-fill From with nearest building
+            if (nearest) {
+                const fromSel = document.getElementById('navFrom');
+                if (!fromSel.value || fromSel.dataset.gpsSet === 'true') {
+                    fromSel.value = nearest.id; fromSel.dataset.gpsSet = 'true';
+                    navFromId = String(nearest.id); onNavSelectChange();
+                }
+            }
+
+            // Update remaining distance if route active
+            if (currentRoute) {
+                const endId = currentRoute.path[currentRoute.path.length - 1];
+                const endB = buildings.find(b => b.id === parseInt(endId));
+                if (endB) {
+                    const d = Math.round(Math.sqrt(Math.pow((endB.lat-lat)*111320, 2) + Math.pow((endB.lng-lng)*111320*Math.cos(lat*Math.PI/180), 2)));
+                    document.getElementById('routeDistance').textContent = d;
+                    document.getElementById('routeTime').textContent = Math.max(1, Math.ceil(d / 75));
+                    if (d < 20) showToast(currentLang === 'th' ? '🎉 ถึงจุดหมายแล้ว!' : '🎉 You have arrived!');
+                }
+            }
         }
 
         let navFromId = null, navToId = null, currentRoute = null;
